@@ -49,8 +49,9 @@ int main()
 {
     GLFWwindow *window;
     static Context ctx;
-    const int grid_size = 64;
-    const int grid_scale = 10;
+    const int grid_size = 32;   // edge length of each patch
+    const int grid_scale = 10;  // patch size in world units
+    const int render_distance = 20;  // number of patches away to render
     GLint time_location, mvp_location, sampler_location, grid_scale_location, grid_offset_location, background_location;
     HeightMap<float> heightMap(grid_size, grid_scale);
 
@@ -60,8 +61,8 @@ int main()
         exit(EXIT_FAILURE);
 
     // 3.2 - 4.1 are supported for macOS
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     // The following two lines are needed for macOS, which doesn't support
     // the compatibility profile for recent OpenGL versions.
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -147,11 +148,14 @@ int main()
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT );
 
-    glm::vec3 background_colour{0.4, 0.4, 0.4};
+    glm::vec3 background_colour{0.1, 0.1, 0.1};
 
     glEnable(GL_DEPTH_TEST);
+
+    long frame_counter = 0;
     while (!glfwWindowShouldClose(window))
     {
+        frame_counter += 1;
         if (player.controls.k_esc.pressed()) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
             continue;
@@ -172,7 +176,7 @@ int main()
                 glm::radians(45.0f),  // field of view
                 float(ctx.width) / float(ctx.height),  // aspect ratio
                 0.001f,
-                100.0f);
+                1000.0f);
         glm::mat4 model = glm::translate(
                 glm::vec3(
                         -grid_scale / 2.f,
@@ -202,15 +206,22 @@ int main()
         glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
         glm::vec2 view_from(player_pos - player_dir);
         glm::vec2 player_loc(view_from.x, view_from.y);
-        for (int grid_x = int(player_pos.x - 20. / grid_scale) - 1; grid_x <= int(player_pos.x + 20. / grid_scale) + 1; grid_x++) {
-            for (int grid_y = int(player_pos.y - 20. / grid_scale) - 1; grid_y <= int(player_pos.y + 20. / grid_scale) + 1; grid_y++) {
+        auto frame_triangles = 0;
+        for (int grid_x = int(player_pos.x - render_distance); grid_x <= int(player_pos.x + render_distance); grid_x++) {
+            for (int grid_y = int(player_pos.y - render_distance); grid_y <= int(player_pos.y + render_distance); grid_y++) {
                 glm::vec2 grid_offset{grid_x, grid_y};
-                // Draw the grid square if it's "in front of us" for some rough value of that. (cos(theta) > X)
-                if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - player_loc))) > 0.7) {
+                // Draw the grid square if it's vaguely "in front of us" (cos(theta) > X) and within a reasonable
+                // distance.
+                if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - player_loc))) > 0.7 &&
+                    glm::distance(grid_offset, player_loc) < render_distance) {
                     glUniform2fv(grid_offset_location, 1, glm::value_ptr(grid_offset));
                     glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, nullptr);
+                    frame_triangles += numIndices / 3;
                 }
             }
+        }
+        if (frame_counter % 60 == 0) {
+            std::cout << frame_triangles << "\n";
         }
         glfwSwapBuffers(window);
         glfwPollEvents();
