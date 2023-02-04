@@ -49,9 +49,9 @@ int main()
 {
     GLFWwindow *window;
     static Context ctx;
-    const int grid_size = 32;   // edge length of each patch
-    const int grid_scale = 10;  // patch size in world units
-    const int render_distance = 20;  // number of patches away to render
+    const int grid_size = 128;  // edge length of each patch
+    const int grid_scale = 30;  // patch size in world units
+    const int render_distance = 6;  // number of patches away to render
     GLint time_location, mvp_location, sampler_location, grid_scale_location, grid_offset_location, background_location;
     HeightMap<float> heightMap(grid_size, grid_scale);
 
@@ -91,8 +91,6 @@ int main()
                         ctx.setSize(new_width, new_height);
                     }));
 
-    heightMap.generate();
-
     ShaderProgram program("shaders/heightmap");
     time_location = program.uniformLocation("u_time");
     mvp_location = program.uniformLocation("u_mvpMatrix");
@@ -127,20 +125,6 @@ int main()
     GLuint texId;
     glGenTextures(1, &texId);
     glBindTexture(GL_TEXTURE_2D, texId);
-
-    glTexImage2D(
-            GL_TEXTURE_2D, // target
-            0, // level
-            //GL_R8, // internal format
-            GL_R32F, // internal format
-            grid_size, //width
-            grid_size, //height
-            0, // border
-            GL_RED, // format
-            //GL_UNSIGNED_BYTE,
-            GL_FLOAT,
-            &heightMap.heights[0]
-    );
 
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
@@ -214,6 +198,21 @@ int main()
                 // distance.
                 if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - player_loc))) > 0.7 &&
                     glm::distance(grid_offset, player_loc) < render_distance) {
+                    // TODO: make this more efficient, probably by using multiple textures
+                    // (or multi-layer textures?) updated outside this loop.
+                    glTexImage2D(
+                            GL_TEXTURE_2D, // target
+                            0, // level
+                            //GL_R8, // internal format
+                            GL_R32F, // internal format
+                            grid_size, //width
+                            grid_size, //height
+                            0, // border
+                            GL_RED, // format
+                            //GL_UNSIGNED_BYTE,
+                            GL_FLOAT,
+                            &heightMap.getPatch(grid_x, grid_y)[0]
+                    );
                     glUniform2fv(grid_offset_location, 1, glm::value_ptr(grid_offset));
                     glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, nullptr);
                     frame_triangles += numIndices / 3;

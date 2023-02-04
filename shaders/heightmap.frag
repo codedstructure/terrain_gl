@@ -21,14 +21,10 @@ void main()
         fog = 0;
     }
     vec4 fogColour = vec4(u_background.rgb, 1.);
-    if (false) { // }(int(groundPos.x * 10)) % 10 == 0 || (int(groundPos.y * 10) % 10 == 0)){
-        fragColor = fogColour;
-    } else {
-        fragColor = mix(
-            vec4(max(0.1,
-                        dot(groundNormal, normalize(vec3(1., 1, 1.)))
-                ) * groundColour.rgb, 1.),
-            fogColour,
-            fog);
-    }
+    fragColor = mix(
+        vec4(max(0.3,
+                    dot(groundNormal, normalize(vec3(1., 1, 1.)))
+            ) * groundColour.rgb, 1.),
+        fogColour,
+        fog);
 }

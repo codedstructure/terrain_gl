@@ -15,7 +15,8 @@ add_executable(terrain_gl
         src/player.cpp
         src/controls.cpp
         src/shader.cpp
-        src/heightmap.cpp)
+        src/heightmap.cpp
+        src/simplexnoise1234.cpp)
 
 # MacOS (Apple Silicon):
 #  arch -arm64 brew install cmake make glfw glew glm

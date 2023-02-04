@@ -7,8 +7,10 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 #include <cmath>
+#include <iostream>
 
 #include "heightmap.h"
+#include "simplexnoise1234.h"
 
 // Approach to heightmap rendering here adapted from Chapter 14 of
 // "OpenGL ES 3.0 Programming Guide Second Edition",
@@ -19,10 +21,6 @@ HeightMap<T>::HeightMap(int size, int grid_scale) :
     size(size),
     grid_scale(grid_scale)
 {
-}
-
-template<typename T>
-void HeightMap<T>::generate() {
     const float stepSize = size - 1;
 
     for (int i = 0; i < size; i++) {
@@ -44,15 +42,40 @@ void HeightMap<T>::generate() {
             grid_indices.push_back(j + (i+1) * size);
         }
     }
-    for (int x=0; x<size; x++) {
-        for (int y=0; y<size; y++) {
-            auto fx = 2. * float(x)/(size - 1) - 1; // -1..1
-            auto fy = 2. * float(y)/(size - 1) - 1; // -1..1
-            heights.push_back(
-                    static_cast<T>(
-                            (fx * fx + fy * fy) - 3
-                    )
-            );
+}
+
+template<typename T>
+std::vector<T>& HeightMap<T>::getPatch(int x, int y) {
+    auto key = std::make_pair(x, y);
+    auto found_patch = patches.find(key);
+    if (found_patch != patches.end()) {
+        return found_patch->second;
+    }
+
+    auto new_patch = new std::vector<T>;
+    std::cout << "Generating patch for " << x << ", " << y << "\n";
+    generatePatch(x, y, *new_patch);
+    patches.emplace(key, *new_patch);
+
+    return *new_patch;
+}
+
+template<typename T>
+void HeightMap<T>::generatePatch(int grid_x, int grid_y, std::vector<T>& target) {
+    for (int y=0; y<size; y++) {
+        for (int x=0; x<size; x++) {
+            float fx = float(x)/(size-1) + grid_x; // 0..1
+            float fy = float(y)/(size-1) + grid_y; // 0..1
+
+            float value = 0;
+            float scale = 30;
+            float detail = 1. / 16;
+            for (int octave = 0; octave < 10; octave++) {
+                value += SimplexNoise1234::noise((fx*detail), (fy*detail)) * scale;
+                scale /= 2;
+                detail *= 2;
+            }
+            target.push_back(value - 15);
         }
     }
 }
