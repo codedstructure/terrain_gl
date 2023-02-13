@@ -22,7 +22,8 @@ Controls::Controls() :
     k_a(GLFW_KEY_A),
     k_s(GLFW_KEY_S),
     k_d(GLFW_KEY_D),
-    k_z(GLFW_KEY_Z)
+    k_z(GLFW_KEY_Z),
+    k_space(GLFW_KEY_SPACE)
 {
     register_pk(k_esc);
     register_pk(k_left);
@@ -34,6 +35,7 @@ Controls::Controls() :
     register_pk(k_s);
     register_pk(k_d);
     register_pk(k_z);
+    register_pk(k_space);
 }
 
 void Controls::register_pk(PressedKey &pk) {

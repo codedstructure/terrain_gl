@@ -44,6 +44,7 @@ struct Controls {
     PressedKey k_s;
     PressedKey k_d;
     PressedKey k_z;
+    PressedKey k_space;
 
     float m_thrust = 0.;
 

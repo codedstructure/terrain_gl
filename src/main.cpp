@@ -49,7 +49,7 @@ int main()
 {
     GLFWwindow *window;
     static Context ctx;
-    const int grid_size = 128;  // edge length of each patch
+    const int grid_size = 128;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
     const int grid_scale = 30;  // patch size in world units
     const int render_distance = 6;  // number of patches away to render
     GLint time_location, mvp_location, sampler_location, grid_scale_location, grid_offset_location, background_location;
@@ -128,9 +128,10 @@ int main()
 
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    // Mirror texture lookups to avoid edge-effects
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT );
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT );
+    // Constant border to exacerbate edge effects - we want to deal with them internally and
+    // never hit the edge here.
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
 
     glm::vec3 background_colour{0.1, 0.1, 0.1};
 
@@ -200,13 +201,18 @@ int main()
                     glm::distance(grid_offset, player_loc) < render_distance) {
                     // TODO: make this more efficient, probably by using multiple textures
                     // (or multi-layer textures?) updated outside this loop.
+                    // The texture is calculated at a larger size than the rendered patch,
+                    // so the texture coordinate can be shifted towards the centre of the
+                    // texture and thus avoid edge-effects. Needs to tie up with heightmap
+                    // generation and the vertex shader...
+                    int adapted = grid_size * 1.25;
                     glTexImage2D(
                             GL_TEXTURE_2D, // target
                             0, // level
                             //GL_R8, // internal format
                             GL_R32F, // internal format
-                            grid_size, //width
-                            grid_size, //height
+                            adapted, // width
+                            adapted, // height
                             0, // border
                             GL_RED, // format
                             //GL_UNSIGNED_BYTE,

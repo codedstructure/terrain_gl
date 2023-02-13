@@ -53,7 +53,6 @@ std::vector<T>& HeightMap<T>::getPatch(int x, int y) {
     }
 
     auto new_patch = new std::vector<T>;
-    std::cout << "Generating patch for " << x << ", " << y << "\n";
     generatePatch(x, y, *new_patch);
     patches.emplace(key, *new_patch);
 
@@ -62,10 +61,13 @@ std::vector<T>& HeightMap<T>::getPatch(int x, int y) {
 
 template<typename T>
 void HeightMap<T>::generatePatch(int grid_x, int grid_y, std::vector<T>& target) {
-    for (int y=0; y<size; y++) {
-        for (int x=0; x<size; x++) {
-            float fx = float(x)/(size-1) + grid_x; // 0..1
-            float fy = float(y)/(size-1) + grid_y; // 0..1
+    auto adapted = size * 1.25;
+    for (int y=0; y<adapted; y++) {
+        for (int x=0; x<adapted; x++) {
+            float fx = float(x)/size + grid_x; // 0..1
+            float fy = float(y)/size + grid_y; // 0..1
+
+            // float value = 1 / (cos(fx * fx + fy * fy) + 1.4);
 
             float value = 0;
             float scale = 30;

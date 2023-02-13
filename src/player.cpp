@@ -13,6 +13,9 @@ using glm::vec3, glm::vec4, glm::mat4;
 Player player;
 
 void Player::update() {
+    if (controls.k_space.pressed()) {
+        return;
+    }
 
     /*
     std::cout << "HEADING: " << m_heading.x << " " << m_heading.y << " " << m_heading.z << "\n";

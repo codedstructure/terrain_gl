@@ -14,7 +14,9 @@ out vec2 groundPos;
 void main()
 {
     vec2 world_pos = (u_grid_scale * u_grid_offset) + vPos.xz;
-    vec2 tpos = vPos.xz / u_grid_scale;
+    // 0.8 below undoes the 1.25 texture scaling required to be able to
+    // offset into it, avoiding edge effects when computing normals.
+    vec2 tpos = 0.8 * vPos.xz / u_grid_scale + vec2(0.125, 0.125);
 
     // Derive normal using a Sobel filter
     float topLeft = textureOffset(u_heightmap, tpos, ivec2(-1., 1.)).r;
