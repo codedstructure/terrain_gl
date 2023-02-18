@@ -16,6 +16,7 @@ add_executable(terrain_gl
         src/controls.cpp
         src/shader.cpp
         src/heightmap.cpp
+        src/texture.cpp
         src/simplexnoise1234.cpp)
 
 # MacOS (Apple Silicon):

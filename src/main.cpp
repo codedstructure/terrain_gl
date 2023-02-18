@@ -18,6 +18,7 @@
 #include "player.h"
 #include "shader.h"
 #include "heightmap.h"
+#include "texture.h"
 
 extern Player player;
 
@@ -52,7 +53,7 @@ int main()
     const int grid_size = 128;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
     const int grid_scale = 30;  // patch size in world units
     const int render_distance = 6;  // number of patches away to render
-    GLint time_location, mvp_location, sampler_location, grid_scale_location, grid_offset_location, background_location;
+    GLint time_location, mvp_location, sampler_location, texture_sampler_location, grid_scale_location, grid_offset_location, background_location;
     HeightMap<float> heightMap(grid_size, grid_scale);
 
     glfwSetErrorCallback(error_callback);
@@ -95,10 +96,13 @@ int main()
     time_location = program.uniformLocation("u_time");
     mvp_location = program.uniformLocation("u_mvpMatrix");
     sampler_location = program.uniformLocation("u_heightmap");
+    texture_sampler_location = program.uniformLocation("u_texture");
     grid_scale_location = program.uniformLocation("u_grid_scale");
     grid_offset_location = program.uniformLocation("u_grid_offset");
     background_location = program.uniformLocation("u_background");
     program.activate();
+
+    Texture wall("images/stone-texture.jpg");
 
     // Index buffer for base grid
     const int numIndices = (grid_size - 1) * (grid_size - 1) * 2 * 3;
@@ -177,10 +181,13 @@ int main()
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
 
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_2D, wall.get_id());
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texId);
 
         glUniform1i(sampler_location, 0);
+        glUniform1i(texture_sampler_location, 1);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
         glUniform1f(grid_scale_location, grid_scale);

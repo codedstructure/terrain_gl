@@ -4,6 +4,7 @@
 #version 330 core
 uniform float u_time;
 uniform vec3 u_background;
+uniform sampler2D u_texture;
 
 in vec4 groundColour;
 in vec3 groundNormal;
@@ -21,10 +22,11 @@ void main()
         fog = 0;
     }
     vec4 fogColour = vec4(u_background.rgb, 1.);
+    fragColor = texture(u_texture, groundPos.xy / 35.);
     fragColor = mix(
         vec4(max(0.3,
                     dot(groundNormal, normalize(vec3(1., 1, 1.)))
-            ) * groundColour.rgb, 1.),
+            ) * (fragColor.rgb + groundColour.rgb), 1.),
         fogColour,
         fog);
 }

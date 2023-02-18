@@ -85,4 +85,3 @@ void HeightMap<T>::generatePatch(int grid_x, int grid_y, std::vector<T>& target)
 // explicit instantiation of available types
 template class HeightMap<uint8_t>;
 template class HeightMap<float>;
-
