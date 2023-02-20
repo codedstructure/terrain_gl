@@ -1,13 +1,12 @@
-//
-// Created by Benjamin Bass on 16/02/2023.
-//
+// terrain_gl
+// @codedstructure 2023
 
 #ifndef TERRAIN_GL_TEXTURE_H
 #define TERRAIN_GL_TEXTURE_H
 
 class Texture {
 public:
-    Texture(const char* filename);
+    Texture(const int tex_id, const char* filename);
     ~Texture();
 
     unsigned int get_id() {return m_texture_id;}

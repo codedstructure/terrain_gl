@@ -3,7 +3,7 @@
 
 #version 330 core
 uniform mat4 u_mvpMatrix;
-uniform sampler2D u_heightmap;
+uniform sampler2DArray u_heightmap;
 uniform float u_grid_scale;
 uniform vec2 u_grid_offset;
 in vec3 vPos;
@@ -16,7 +16,11 @@ void main()
     vec2 world_pos = (u_grid_scale * u_grid_offset) + vPos.xz;
     // 0.8 below undoes the 1.25 texture scaling required to be able to
     // offset into it, avoiding edge effects when computing normals.
-    vec2 tpos = 0.8 * vPos.xz / u_grid_scale + vec2(0.125, 0.125);
+    vec2 patchpos = 0.8 * vPos.xz / u_grid_scale + vec2(0.125, 0.125);
+
+    // TODO: work out the layer in the 2D texture array; currently
+    // hardcoded to 1.
+    vec3 tpos = vec3(patchpos, 1);
 
     // Derive normal using a Sobel filter
     float topLeft = textureOffset(u_heightmap, tpos, ivec2(-1., 1.)).r;
@@ -38,5 +42,5 @@ void main()
 
     float isoline = sin(height)/2. + 0.5;
     isoline = pow(isoline, 20.);
-    groundColour = vec4(isoline, 0.5, 0.5, 1.);
+    groundColour = vec4(0.5, 0.3, 0.2, 1.) + vec4(isoline, isoline, isoline, 1.);
 }

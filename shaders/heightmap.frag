@@ -14,8 +14,8 @@ void main()
 {
 
     float dist = gl_FragCoord.z / gl_FragCoord.w;
-    float fog = clamp(0.01 * dist, 0., 1.);
-    const float fogStart = 0.75;
+    float fog = clamp(0.005 * dist, 0., 1.);
+    const float fogStart = 0.95;
     if (fog > fogStart) {
         fog = mix(0., 1., ((fog - fogStart)/(1.-fogStart)));
     } else {
@@ -25,7 +25,7 @@ void main()
     fragColor = texture(u_texture, groundPos.xy / 35.);
     fragColor = mix(
         vec4(max(0.3,
-                    dot(groundNormal, normalize(vec3(1., 1, 1.)))
+                    0.5 * dot(groundNormal, normalize(vec3(1., 1, 1.)))
             ) * (fragColor.rgb + groundColour.rgb), 1.),
         fogColour,
         fog);

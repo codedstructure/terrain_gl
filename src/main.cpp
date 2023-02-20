@@ -50,9 +50,11 @@ int main()
 {
     GLFWwindow *window;
     static Context ctx;
-    const int grid_size = 128;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
-    const int grid_scale = 30;  // patch size in world units
-    const int render_distance = 6;  // number of patches away to render
+    const int HEIGHTMAP_TEX_ID = 0;
+    const int STONE_TEX_ID = 1;
+    const int grid_size = 64;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
+    const int grid_scale = 64;  // patch size in world units
+    const int render_distance = 8;  // number of patches away to render
     GLint time_location, mvp_location, sampler_location, texture_sampler_location, grid_scale_location, grid_offset_location, background_location;
     HeightMap<float> heightMap(grid_size, grid_scale);
 
@@ -102,8 +104,6 @@ int main()
     background_location = program.uniformLocation("u_background");
     program.activate();
 
-    Texture wall("images/stone-texture.jpg");
-
     // Index buffer for base grid
     const int numIndices = (grid_size - 1) * (grid_size - 1) * 2 * 3;
     GLuint indicesIBO;
@@ -128,16 +128,17 @@ int main()
 
     GLuint texId;
     glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
+    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     // Constant border to exacerbate edge effects - we want to deal with them internally and
     // never hit the edge here.
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
-    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
+    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
+    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
 
-    glm::vec3 background_colour{0.1, 0.1, 0.1};
+    Texture stone(STONE_TEX_ID, "images/stone-texture.jpg");
+
+    glm::vec3 background_colour{0.6, 0.6, 0.6};
 
     glEnable(GL_DEPTH_TEST);
 
@@ -181,13 +182,11 @@ int main()
         glEnableVertexAttribArray(0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
 
-        glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, wall.get_id());
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texId);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
 
-        glUniform1i(sampler_location, 0);
-        glUniform1i(texture_sampler_location, 1);
+        glUniform1i(sampler_location, HEIGHTMAP_TEX_ID);
+        glUniform1i(texture_sampler_location, STONE_TEX_ID);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
         glUniform1f(grid_scale_location, grid_scale);
@@ -213,13 +212,14 @@ int main()
                     // texture and thus avoid edge-effects. Needs to tie up with heightmap
                     // generation and the vertex shader...
                     int adapted = grid_size * 1.25;
-                    glTexImage2D(
-                            GL_TEXTURE_2D, // target
+                    glTexImage3D(
+                            GL_TEXTURE_2D_ARRAY, // target
                             0, // level
                             //GL_R8, // internal format
-                            GL_R32F, // internal format
+                            GL_R16F, // internal format
                             adapted, // width
                             adapted, // height
+                            1, // depth (number of layers)
                             0, // border
                             GL_RED, // format
                             //GL_UNSIGNED_BYTE,

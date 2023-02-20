@@ -1,6 +1,5 @@
-//
-// Created by Benjamin Bass on 16/02/2023.
-//
+// terrain_gl
+// @codedstructure 2023
 
 #include <iostream>
 #include <GL/glew.h>
@@ -9,7 +8,7 @@
 #include "texture.h"
 
 // Adapted from https://learnopengl.com/getting-started/textures
-Texture::Texture(const char* filename) :
+Texture::Texture(const int tex_id, const char* filename) :
     m_data(nullptr),
     m_texture_id(0),
     m_width(0),
@@ -22,6 +21,7 @@ Texture::Texture(const char* filename) :
         return;
     }
     std::cout << "Loaded texture from " << filename << " " << m_width << "x" << m_height << "," << m_channels << "\n";
+    glActiveTexture(GL_TEXTURE0 + tex_id);
     glGenTextures(1, &m_texture_id);
     glBindTexture(GL_TEXTURE_2D, m_texture_id);
 
