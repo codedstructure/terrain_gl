@@ -48,7 +48,7 @@ void Player::update() {
     float forward_speed = dot(m_heading, m_velocity);
     //}
     //std::cout << "FORWARD: " << forward_speed << "\n";
-    const float mass = 100.f;
+    const float mass = 10.f;
     const vec3 gravity{0., -0.01, 0.};
     vec3 weight = mass * gravity;
     vec3 thrust = m_heading * controls.m_thrust;

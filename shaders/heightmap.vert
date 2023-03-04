@@ -3,6 +3,7 @@
 
 #version 330 core
 uniform mat4 u_mvpMatrix;
+uniform int u_layer;
 uniform sampler2DArray u_heightmap;
 uniform float u_grid_scale;
 uniform vec2 u_grid_offset;
@@ -20,7 +21,7 @@ void main()
 
     // TODO: work out the layer in the 2D texture array; currently
     // hardcoded to 1.
-    vec3 tpos = vec3(patchpos, 1);
+    vec3 tpos = vec3(patchpos, u_layer);
 
     // Derive normal using a Sobel filter
     float topLeft = textureOffset(u_heightmap, tpos, ivec2(-1., 1.)).r;
