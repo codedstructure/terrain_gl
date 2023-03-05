@@ -58,9 +58,6 @@ int main()
     const int layer_count =  (render_distance * 2) * (render_distance * 2);
     static_assert(layer_count <= 256);  // OpenGL implementations must support at least 256 layers in 2D array textures
 
-    GLint heightmap_index[layer_count];
-    std::fill_n(heightmap_index, layer_count, -1);
-
     GLint time_location, mvp_location, heightmap_location, layer_location, texture_sampler_location, grid_scale_location, grid_offset_location, background_location;
     HeightMap<float> heightMap(grid_size, grid_scale);
 
@@ -145,8 +142,6 @@ int main()
     glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
     glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
 
-    // TODO: make this more efficient, probably by using multiple textures
-    // (or multi-layer textures?) updated outside this loop.
     // The texture is calculated at a larger size than the rendered patch,
     // so the texture coordinate can be shifted towards the centre of the
     // texture and thus avoid edge-effects. Needs to tie up with heightmap
@@ -169,14 +164,13 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
-    //glActiveTexture(GL_TEXTURE0);
-    //glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
+    std::map<std::pair<int, int>, int> grid_layer_map;  // (x,y) -> layer
+    std::map<int, std::pair<int, int>> layer_grid_map;  // layer -> (x,y)
     glm::vec2 player_pos_a(player.m_position.x, player.m_position.z);
     player_pos_a /= grid_scale;
     for (int grid_x = int(player_pos_a.x - render_distance); grid_x < int(player_pos_a.x + render_distance); grid_x++) {
         for (int grid_y = int(player_pos_a.y - render_distance); grid_y < int(player_pos_a.y + render_distance); grid_y++) {
             int layer = (grid_y + render_distance) + (2 * render_distance) * (render_distance + grid_x);
-            std::cout << layer << "\n";
             glTexSubImage3D(
                     GL_TEXTURE_2D_ARRAY, // target
                     0, // mipmap level
@@ -189,10 +183,14 @@ int main()
                     GL_FLOAT,
                     &heightMap.getPatch(grid_x, grid_y)[0]
                     );
+            grid_layer_map[{grid_x, grid_y}] = layer;
+            layer_grid_map[layer] = {grid_x, grid_y};
         }
     }
 
     long frame_counter = 0;
+    double worstFrameTime = 0;
+    double frameTime = 0;
     while (!glfwWindowShouldClose(window))
     {
         auto frameStart = glfwGetTime();
@@ -256,17 +254,52 @@ int main()
                 // distance.
                 if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - player_loc))) > 0.7 &&
                     glm::distance(grid_offset, player_loc) < render_distance) {
-                    int layer = (grid_y + render_distance) + (2 * render_distance) * (render_distance + grid_x);
-                    glUniform1i(layer_location, layer);
+                    auto layer = grid_layer_map.find({grid_x, grid_y});
+                    if (layer != grid_layer_map.end()) {
+                        glUniform1i(layer_location, layer->second);
+                    } else {
+                        // 1. find patch to replace
+                        // yup, this seems awful, but it does the job reasonably well.
+                        // (minor concession: ignore the least-random low-order bits)
+                        auto replace_layer = (rand() >> 8) % layer_count;
+
+                        // 2. create new patch for grid_x, grid_y and update texture array
+                        glTexSubImage3D(
+                                GL_TEXTURE_2D_ARRAY, // target
+                                0, // mipmap level
+                                0, 0, // top-left coord
+                                replace_layer, // start layer
+                                adapted, // width
+                                adapted, // height
+                                1, // layer count (number of layers)
+                                GL_RED, // format
+                                GL_FLOAT,
+                                &heightMap.getPatch(grid_x, grid_y)[0]
+                        );
+
+                        // 3. update the heightmap index arrays
+                        auto grid = layer_grid_map[replace_layer];
+                        grid_layer_map.erase(grid);
+                        grid_layer_map[{grid_x, grid_y}] = replace_layer;
+                        layer_grid_map[replace_layer] = {grid_x, grid_y};
+                        glUniform1i(layer_location, replace_layer);
+                    }
                     glUniform2fv(grid_offset_location, 1, glm::value_ptr(grid_offset));
                     glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, nullptr);
                     frame_triangles += numIndices / 3;
                 }
             }
         }
-        auto frameTime = glfwGetTime() - frameStart;
-        if (frame_counter % 60 == 0) {
-            std::cout << frame_triangles << " " << frameTime << "\n";
+        auto thisFrameTime = glfwGetTime() - frameStart;
+        frameTime += thisFrameTime;
+        if (thisFrameTime > worstFrameTime) {
+            worstFrameTime = thisFrameTime;
+        }
+        if (frame_counter >= 60) {
+            std::cout << frame_triangles << " " << frameTime / 60 << " (worst: " << worstFrameTime << ")\n";
+            worstFrameTime = 0;
+            frame_counter = 0;
+            frameTime = 0;
         }
         glfwSwapBuffers(window);
         glfwPollEvents();
