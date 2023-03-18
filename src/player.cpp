@@ -82,6 +82,28 @@ void Player::update() {
         m_roll -= 0.01;
     }
 
+    if (controls.k_w.pressed()) {
+        m_position += m_heading * (controls.k_shift.pressed() ? 1.f : 0.1f);
+    }
+    if (controls.k_s.pressed()) {
+        m_position -= m_heading * (controls.k_shift.pressed() ? 1.f : 0.1f);
+    }
+    if (controls.k_a.pressed()) {
+        m_position += across * (controls.k_shift.pressed() ? 1.f : 0.1f);
+    }
+    if (controls.k_d.pressed()) {
+        m_position -= across * (controls.k_shift.pressed() ? 1.f : 0.1f);
+    }
+    if (controls.k_q.pressed()) {
+        m_heading += across * 0.01f;
+        m_heading = glm::normalize(m_heading);
+    }
+    if (controls.k_e.pressed()) {
+        m_heading -= across * 0.01f;
+        m_heading = glm::normalize(m_heading);
+    }
+
+
     mat4 rotation = mat4(1.f);
     rotation = glm::rotate(rotation, -m_roll/50.f, m_heading);
     rotation = glm::rotate(rotation, m_pitch/50.f, across);

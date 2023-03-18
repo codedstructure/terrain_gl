@@ -22,7 +22,10 @@ Controls::Controls() :
     k_a(GLFW_KEY_A),
     k_s(GLFW_KEY_S),
     k_d(GLFW_KEY_D),
+    k_q(GLFW_KEY_Q),
+    k_e(GLFW_KEY_E),
     k_z(GLFW_KEY_Z),
+    k_shift(GLFW_KEY_LEFT_SHIFT),
     k_space(GLFW_KEY_SPACE)
 {
     register_pk(k_esc);
@@ -34,7 +37,10 @@ Controls::Controls() :
     register_pk(k_a);
     register_pk(k_s);
     register_pk(k_d);
+    register_pk(k_q);
+    register_pk(k_e);
     register_pk(k_z);
+    register_pk(k_shift);
     register_pk(k_space);
 }
 
