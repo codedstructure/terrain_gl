@@ -11,6 +11,7 @@ template<typename T>
 class HeightMap {
 public:
   HeightMap(int grid_size, int grid_scale);
+  T heightAt(float x, float y);
 
   std::vector<T>& getPatch(int x, int y);
   std::vector<GLfloat> grid;

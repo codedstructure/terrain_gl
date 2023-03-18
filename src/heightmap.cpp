@@ -67,19 +67,26 @@ void HeightMap<T>::generatePatch(int grid_x, int grid_y, std::vector<T>& target)
             float fx = float(x)/size + grid_x; // 0..1
             float fy = float(y)/size + grid_y; // 0..1
 
-            // float value = 1 / (cos(fx * fx + fy * fy) + 1.4);
-
-            float value = 0;
-            float scale = 30;
-            float detail = 1. / 16;
-            for (int octave = 0; octave < 10; octave++) {
-                value += SimplexNoise1234::noise((fx*detail), (fy*detail)) * scale;
-                scale /= 2;
-                detail *= 2;
-            }
-            target.push_back(value - 15);
+            T value = heightAt(fx, fy);
+            target.push_back(value);
         }
     }
+}
+
+template<typename T>
+T HeightMap<T>::heightAt(float x, float y) {
+    float value = 0;
+    float scale = 30;
+    float detail = 1. / 16;
+    for (int octave = 0; octave < 10; octave++) {
+        value += SimplexNoise1234::noise((x*detail), (y*detail)) * scale;
+        scale /= 2;
+        detail *= 2;
+    }
+
+    //value = (int(x)+int(y)) % 2 == 0 ? int(x) : int (y); // remainder(x+ y, 1) * 20 : -10;
+
+    return value * (grid_scale / 64.f) + 5;
 }
 
 // explicit instantiation of available types

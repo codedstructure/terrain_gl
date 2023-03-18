@@ -188,6 +188,12 @@ int main()
         }
     }
 
+    glClearColor(
+            background_colour.r,
+            background_colour.g,
+            background_colour.b,
+            1.0);
+
     long frame_counter = 0;
     double worstFrameTime = 0;
     double frameTime = 0;
@@ -203,19 +209,20 @@ int main()
         // TODO - pass in dt since last frame, as well as current height
         player.update();
 
-        glClearColor(
-                background_colour.r,
-                background_colour.g,
-                background_colour.b,
-                1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDepthFunc( GL_LEQUAL);
 
+        glm::vec2 player_pos(player.m_position.x, player.m_position.z);
+        player_pos /= grid_scale;
+        glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
+
+        auto height = heightMap.heightAt(player_pos.x, player_pos.y);
+
         glm::mat4 projection = glm::perspective(
-                glm::radians(45.0f),  // field of view
+                glm::radians(75.0f),  // field of view
                 float(ctx.width) / float(ctx.height),  // aspect ratio
                 0.001f,
-                1000.0f);
+                10000.0f);
         glm::mat4 model = glm::translate(
                 glm::vec3(
                         -grid_scale / 2.f,
@@ -223,6 +230,9 @@ int main()
                         -grid_scale / 2.f
                 )
         );
+        if (player.m_position.y < 10 + height) {
+            player.m_position.y = height + 10;
+        }
         glm::mat4 mvp = projection * player.getViewMatrix() * model;
 
         // Render the heightmap
@@ -241,9 +251,6 @@ int main()
         glUniform1f(grid_scale_location, grid_scale);
         glUniform3fv(background_location, 1, glm::value_ptr(background_colour));
 
-        glm::vec2 player_pos(player.m_position.x, player.m_position.z);
-        player_pos /= grid_scale;
-        glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
         glm::vec2 view_from(player_pos - player_dir);
         glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
@@ -252,7 +259,7 @@ int main()
                 glm::vec2 grid_offset{grid_x, grid_y};
                 // Draw the grid square if it's vaguely "in front of us" (cos(theta) > X) and within a reasonable
                 // distance.
-                if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - player_loc))) > 0.7 &&
+                if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - (player_loc - player_dir)))) > 0.5 &&
                     glm::distance(grid_offset, player_loc) < render_distance) {
                     auto layer = grid_layer_map.find({grid_x, grid_y});
                     if (layer != grid_layer_map.end()) {
@@ -300,6 +307,8 @@ int main()
             worstFrameTime = 0;
             frame_counter = 0;
             frameTime = 0;
+            std::cout << player_pos.x << ","<< player_pos.y << ": (" << player.m_position.x << "," << player.m_position.y <<"," << player.m_position.z <<")\n";
+
         }
         glfwSwapBuffers(window);
         glfwPollEvents();
