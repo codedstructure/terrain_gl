@@ -16,7 +16,7 @@ void main()
 {
 
     float dist = gl_FragCoord.z / gl_FragCoord.w;
-    float fog = clamp(0.003 * dist, 0., 1.);
+    float fog = 0; // clamp(0.003 * dist, 0., 1.);
     const float fogStart = 0.95;
     if (fog > fogStart) {
         fog = mix(0., 1., ((fog - fogStart)/(1.-fogStart)));

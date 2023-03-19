@@ -53,9 +53,10 @@ int main()
     const int HEIGHTMAP_TEX_ID = 0;
     const int STONE_TEX_ID = 1;
     const int grid_size = 64;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
-    const int grid_scale = 64;  // patch size in world units
-    const int render_distance = 8;  // number of patches away to render
-    const int layer_count =  (render_distance * 2) * (render_distance * 2);
+    const int grid_scale = 256;  // patch size in world units
+    const int render_distance = 7;  // number of patches away to render (0 = only current patch)
+    // 0->1, 1->9, 2->25, 3->49, 4->81, etc
+    const int layer_count =  ((2 * render_distance) + 1) * ((2 * render_distance) + 1);
     static_assert(layer_count <= 256);  // OpenGL implementations must support at least 256 layers in 2D array textures
 
     GLint time_location, mvp_location, heightmap_location, layer_location, texture_sampler_location, grid_scale_location, grid_offset_location, background_location;
@@ -168,14 +169,14 @@ int main()
     std::map<int, std::pair<int, int>> layer_grid_map;  // layer -> (x,y)
     glm::vec2 player_pos_a(player.m_position.x, player.m_position.z);
     player_pos_a /= grid_scale;
-    for (int grid_x = int(player_pos_a.x - render_distance); grid_x < int(player_pos_a.x + render_distance); grid_x++) {
-        for (int grid_y = int(player_pos_a.y - render_distance); grid_y < int(player_pos_a.y + render_distance); grid_y++) {
-            int layer = (grid_y + render_distance) + (2 * render_distance) * (render_distance + grid_x);
+    int texture_layer = 0;
+    for (int grid_x = floor(player_pos_a.x - render_distance + 0.5); grid_x <= floor(player_pos_a.x + render_distance + 0.5); grid_x++) {
+        for (int grid_y = floor(player_pos_a.y - render_distance + 0.5); grid_y <= floor(player_pos_a.y + render_distance + 0.5); grid_y++) {
             glTexSubImage3D(
                     GL_TEXTURE_2D_ARRAY, // target
                     0, // mipmap level
                     0, 0, // top-left coord
-                    layer, // start layer
+                    texture_layer, // start layer
                     adapted, // width
                     adapted, // height
                     1, // layer count (number of layers)
@@ -183,8 +184,10 @@ int main()
                     GL_FLOAT,
                     &heightMap.getPatch(grid_x, grid_y)[0]
                     );
-            grid_layer_map[{grid_x, grid_y}] = layer;
-            layer_grid_map[layer] = {grid_x, grid_y};
+            grid_layer_map[{grid_x, grid_y}] = texture_layer;
+            layer_grid_map[texture_layer] = {grid_x, grid_y};
+
+            texture_layer ++;
         }
     }
 
@@ -254,8 +257,8 @@ int main()
         glm::vec2 view_from(player_pos - player_dir);
         glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
-        for (int grid_x = int(player_pos.x - render_distance); grid_x < int(player_pos.x + render_distance); grid_x++) {
-            for (int grid_y = int(player_pos.y - render_distance); grid_y < int(player_pos.y + render_distance); grid_y++) {
+        for (int grid_x = floor(player_pos.x - render_distance + 0.5); grid_x <= floor(player_pos.x + render_distance + 0.5); grid_x++) {
+            for (int grid_y = floor(player_pos.y - render_distance + 0.5); grid_y <= floor(player_pos.y + render_distance + 0.5); grid_y++) {
                 glm::vec2 grid_offset{grid_x, grid_y};
                 // Draw the grid square if it's vaguely "in front of us" (cos(theta) > X) and within a reasonable
                 // distance.

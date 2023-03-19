@@ -28,7 +28,7 @@ void Player::update() {
     */
     const vec4 world_up = {0., 1., 0., 1.};
     //auto across = glm::cross(vec3(world_up), m_heading);
-    auto across = glm::cross(vec3(m_up), m_heading);
+    auto across = glm::normalize(glm::cross(vec3(m_up), m_heading));
     mat4 roll_rotation = glm::rotate(glm::mat4(1.), m_roll, m_heading);
     mat4 pitch_rotation = glm::rotate(glm::mat4(1.), m_pitch, across);
     m_up = world_up * roll_rotation * pitch_rotation;
