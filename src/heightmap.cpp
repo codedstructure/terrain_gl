@@ -17,17 +17,18 @@
 // Ginsburg & Purnomo, 2014 Pearson Education Ltd.
 
 template<typename T>
-HeightMap<T>::HeightMap(int size, int grid_scale) :
+HeightMap<T>::HeightMap(int size, int grid_scale, int level) :
     size(size),
-    grid_scale(grid_scale)
+    grid_scale(grid_scale),
+    level_factor(1 << level)
 {
     const float stepSize = size - 1;
 
     for (int i = 0; i < size; i++) {
         for (int j = 0; j < size; j++) {
-            grid.push_back((static_cast<float>(i) / stepSize) * grid_scale);
+            grid.push_back((static_cast<float>(i) / stepSize) * grid_scale * level_factor);
             grid.push_back(0.0f);
-            grid.push_back((static_cast<float>(j) / stepSize) * grid_scale);
+            grid.push_back((static_cast<float>(j) / stepSize) * grid_scale * level_factor);
         }
     }
     for (int i = 0; i < size - 1; i++) {
@@ -45,7 +46,17 @@ HeightMap<T>::HeightMap(int size, int grid_scale) :
 }
 
 template<typename T>
-std::vector<T>& HeightMap<T>::getPatch(int x, int y) {
+std::pair<int, int> HeightMap<T>::getPatchCoords(float x, float y) {
+    x = floor(float(x) / level_factor) * level_factor;
+    y = floor(float(y) / level_factor) * level_factor;
+
+    return {x, y};
+}
+
+template<typename T>
+std::vector<T>& HeightMap<T>::getPatchFor(float fx, float fy) {
+    //std::cout << "getPatchFor("<<fx<<","<<fy<<")\n";
+    auto [x, y] = getPatchCoords(fx, fy);
     auto key = std::make_pair(x, y);
     auto found_patch = patches.find(key);
     if (found_patch != patches.end()) {
@@ -61,11 +72,13 @@ std::vector<T>& HeightMap<T>::getPatch(int x, int y) {
 
 template<typename T>
 void HeightMap<T>::generatePatch(int grid_x, int grid_y, std::vector<T>& target) {
+    std::cout << "generatePatch("<<grid_x<<","<<grid_y<<")\n";
     auto adapted = size * 1.25;
+    auto step_size = float(level_factor) / size;
     for (int y=0; y<adapted; y++) {
         for (int x=0; x<adapted; x++) {
-            float fx = float(x)/size + grid_x; // 0..1
-            float fy = float(y)/size + grid_y; // 0..1
+            float fx = float(x) * step_size + grid_x;
+            float fy = float(y) * step_size + grid_y;
 
             T value = heightAt(fx, fy);
             target.push_back(value);

@@ -6,7 +6,10 @@ uniform mat4 u_mvpMatrix;
 uniform int u_layer;
 uniform sampler2DArray u_heightmap;
 uniform float u_grid_scale;
+uniform float value_a;
+uniform float value_b;
 uniform vec2 u_grid_offset;
+uniform int u_level_factor;
 in vec3 vPos;
 out vec4 groundColour;
 out vec3 groundNormal;
@@ -37,9 +40,9 @@ void main()
     // offset into it, avoiding edge effects when computing normals.
     vec2 patchpos = 0.8 * vPos.xz / u_grid_scale + vec2(0.125, 0.125);
 
-    vec3 tpos = vec3(patchpos, u_layer);
+    vec3 tpos = vec3(patchpos / u_level_factor, u_layer);
 
-    groundNormal = sobol(tpos, 0.001) / 2 + sobol(tpos, 0.005);
+    groundNormal = sobol(tpos, 0.0001) / 2 + sobol(tpos, 0.0005);
 
     float height = texture(u_heightmap, tpos).r;
     if (height < 0) {

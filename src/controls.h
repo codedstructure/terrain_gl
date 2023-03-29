@@ -46,10 +46,16 @@ struct Controls {
     PressedKey k_q;
     PressedKey k_e;
     PressedKey k_z;
+    PressedKey k_x;
+    PressedKey k_c;
+    PressedKey k_v;
     PressedKey k_shift;
     PressedKey k_space;
 
     float m_thrust = 0.;
+
+    float value_a = 1;  // z / x
+    float value_b = 1;  // c / v
 
     void key_callback(int key, int action);
 

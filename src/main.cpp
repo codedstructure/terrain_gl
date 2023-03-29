@@ -12,13 +12,12 @@
 #include <glm/gtx/transform.hpp>
 
 #include <cstdlib>
-#include <vector>
 #include <iostream>
 
 #include "player.h"
 #include "shader.h"
-#include "heightmap.h"
 #include "texture.h"
+#include "terrain.h"
 
 extern Player player;
 
@@ -52,15 +51,12 @@ int main()
     static Context ctx;
     const int HEIGHTMAP_TEX_ID = 0;
     const int STONE_TEX_ID = 1;
-    const int grid_size = 64;  // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
-    const int grid_scale = 256;  // patch size in world units
-    const int render_distance = 7;  // number of patches away to render (0 = only current patch)
-    // 0->1, 1->9, 2->25, 3->49, 4->81, etc
-    const int layer_count =  ((2 * render_distance) + 1) * ((2 * render_distance) + 1);
-    static_assert(layer_count <= 256);  // OpenGL implementations must support at least 256 layers in 2D array textures
+    const int render_distance = 2;  // number of patches away to render (0 = only current patch)
 
-    GLint time_location, mvp_location, heightmap_location, layer_location, texture_sampler_location, grid_scale_location, grid_offset_location, background_location;
-    HeightMap<float> heightMap(grid_size, grid_scale);
+    GLint time_location, mvp_location, heightmap_location,
+          layer_location, texture_sampler_location, grid_scale_location,
+          grid_offset_location, background_location,
+          value_a_location, value_b_location, level_factor_location;
 
     glfwSetErrorCallback(error_callback);
 
@@ -102,94 +98,23 @@ int main()
     time_location = program.uniformLocation("u_time");
     mvp_location = program.uniformLocation("u_mvpMatrix");
     heightmap_location = program.uniformLocation("u_heightmap");
-    layer_location = program.uniformLocation("u_layer");
     texture_sampler_location = program.uniformLocation("u_texture");
     grid_scale_location = program.uniformLocation("u_grid_scale");
-    grid_offset_location = program.uniformLocation("u_grid_offset");
     background_location = program.uniformLocation("u_background");
+    value_a_location = program.uniformLocation("value_a");
+    value_b_location = program.uniformLocation("value_b");
     program.activate();
 
-    // Index buffer for base grid
-    const int numIndices = (grid_size - 1) * (grid_size - 1) * 2 * 3;
-    GLuint indicesIBO;
-    glGenBuffers(1, &indicesIBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, numIndices * sizeof(GLuint),
-                 &heightMap.grid_indices[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // Position VBO for base grid
-    GLuint positionVBO;
-    glGenBuffers(1, &positionVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-    glBufferData(GL_ARRAY_BUFFER, grid_size * grid_size * sizeof(GLfloat) * 3,
-                 &heightMap.grid[0], GL_STATIC_DRAW);
-
-    // We need a vertex array generated for the attrib array later on,
-    // even though we never reference VAOId again.
-    GLuint VAOId;
-    glGenVertexArrays(1, &VAOId);
-    glBindVertexArray(VAOId);
+    Terrain terrain4(3, render_distance, program);
+    Terrain terrain3(2, render_distance, program);
+    Terrain terrain2(1, render_distance, program);
+    Terrain terrain(0, render_distance, program);
 
     Texture stone(STONE_TEX_ID, "images/stone-texture.jpg");
-
-    GLuint texId;
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
-    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    // Constant border to exacerbate edge effects - we want to deal with them internally and
-    // never hit the edge here.
-    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
-    glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
-
-    // The texture is calculated at a larger size than the rendered patch,
-    // so the texture coordinate can be shifted towards the centre of the
-    // texture and thus avoid edge-effects. Needs to tie up with heightmap
-    // generation and the vertex shader...
-    int adapted = grid_size * 1.25;
-    glTexImage3D(
-            GL_TEXTURE_2D_ARRAY, // target
-            0, // mipmap level
-            GL_R32F, // internal format
-            adapted, // width
-            adapted, // height
-            layer_count, // depth (number of layers)
-            0, // border
-            GL_RED, // format
-            GL_FLOAT,
-            nullptr
-    );
 
     glm::vec3 background_colour{0.6, 0.6, 0.6};
 
     glEnable(GL_DEPTH_TEST);
-
-    std::map<std::pair<int, int>, int> grid_layer_map;  // (x,y) -> layer
-    std::map<int, std::pair<int, int>> layer_grid_map;  // layer -> (x,y)
-    glm::vec2 player_pos_a(player.m_position.x, player.m_position.z);
-    player_pos_a /= grid_scale;
-    int texture_layer = 0;
-    for (int grid_x = floor(player_pos_a.x - render_distance + 0.5); grid_x <= floor(player_pos_a.x + render_distance + 0.5); grid_x++) {
-        for (int grid_y = floor(player_pos_a.y - render_distance + 0.5); grid_y <= floor(player_pos_a.y + render_distance + 0.5); grid_y++) {
-            glTexSubImage3D(
-                    GL_TEXTURE_2D_ARRAY, // target
-                    0, // mipmap level
-                    0, 0, // top-left coord
-                    texture_layer, // start layer
-                    adapted, // width
-                    adapted, // height
-                    1, // layer count (number of layers)
-                    GL_RED, // format
-                    GL_FLOAT,
-                    &heightMap.getPatch(grid_x, grid_y)[0]
-                    );
-            grid_layer_map[{grid_x, grid_y}] = texture_layer;
-            layer_grid_map[texture_layer] = {grid_x, grid_y};
-
-            texture_layer ++;
-        }
-    }
 
     glClearColor(
             background_colour.r,
@@ -219,87 +144,45 @@ int main()
         player_pos /= grid_scale;
         glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
 
-        auto height = heightMap.heightAt(player_pos.x, player_pos.y);
+        auto height = terrain.heightMap.heightAt(player_pos.x, player_pos.y);
 
         glm::mat4 projection = glm::perspective(
                 glm::radians(75.0f),  // field of view
                 float(ctx.width) / float(ctx.height),  // aspect ratio
-                0.001f,
-                10000.0f);
+                0.1f,
+                100000.0f);
         glm::mat4 model = glm::translate(
                 glm::vec3(
-                        -grid_scale / 2.f,
+                        0, // -grid_scale / 2.f,
                         0.f,
-                        -grid_scale / 2.f
+                        0 // -grid_scale / 2.f
                 )
         );
-        if (player.m_position.y < 10 + height) {
-            player.m_position.y = height + 10;
+        if (player.m_position.y < 20 + height) {
+            player.m_position.y = height + 20;
         }
         glm::mat4 mvp = projection * player.getViewMatrix() * model;
 
         // Render the heightmap
-        glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GLfloat), nullptr);
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
-
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
 
         glUniform1i(heightmap_location, HEIGHTMAP_TEX_ID);
         glUniform1i(texture_sampler_location, STONE_TEX_ID);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
         glUniform1f(grid_scale_location, grid_scale);
+        glUniform1f(value_a_location, player.controls.value_a);
+        glUniform1f(value_b_location, player.controls.value_b);
         glUniform3fv(background_location, 1, glm::value_ptr(background_colour));
 
         glm::vec2 view_from(player_pos - player_dir);
         glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
-        for (int grid_x = floor(player_pos.x - render_distance + 0.5); grid_x <= floor(player_pos.x + render_distance + 0.5); grid_x++) {
-            for (int grid_y = floor(player_pos.y - render_distance + 0.5); grid_y <= floor(player_pos.y + render_distance + 0.5); grid_y++) {
-                glm::vec2 grid_offset{grid_x, grid_y};
-                // Draw the grid square if it's vaguely "in front of us" (cos(theta) > X) and within a reasonable
-                // distance.
-                if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - (player_loc - player_dir)))) > 0.5 &&
-                    glm::distance(grid_offset, player_loc) < render_distance) {
-                    auto layer = grid_layer_map.find({grid_x, grid_y});
-                    if (layer != grid_layer_map.end()) {
-                        glUniform1i(layer_location, layer->second);
-                    } else {
-                        // 1. find patch to replace
-                        // yup, this seems awful, but it does the job reasonably well.
-                        // (minor concession: ignore the least-random low-order bits)
-                        auto replace_layer = (rand() >> 8) % layer_count;
 
-                        // 2. create new patch for grid_x, grid_y and update texture array
-                        glTexSubImage3D(
-                                GL_TEXTURE_2D_ARRAY, // target
-                                0, // mipmap level
-                                0, 0, // top-left coord
-                                replace_layer, // start layer
-                                adapted, // width
-                                adapted, // height
-                                1, // layer count (number of layers)
-                                GL_RED, // format
-                                GL_FLOAT,
-                                &heightMap.getPatch(grid_x, grid_y)[0]
-                        );
+        frame_triangles += terrain4.render_terrain_level(player_pos, player_dir);
+        frame_triangles += terrain3.render_terrain_level(player_pos, player_dir);
+        frame_triangles += terrain2.render_terrain_level(player_pos, player_dir);
+        frame_triangles += terrain.render_terrain_level(player_pos, player_dir);
 
-                        // 3. update the heightmap index arrays
-                        auto grid = layer_grid_map[replace_layer];
-                        grid_layer_map.erase(grid);
-                        grid_layer_map[{grid_x, grid_y}] = replace_layer;
-                        layer_grid_map[replace_layer] = {grid_x, grid_y};
-                        glUniform1i(layer_location, replace_layer);
-                    }
-                    glUniform2fv(grid_offset_location, 1, glm::value_ptr(grid_offset));
-                    glDrawElements(GL_TRIANGLES, numIndices, GL_UNSIGNED_INT, nullptr);
-                    frame_triangles += numIndices / 3;
-                }
-            }
-        }
         auto thisFrameTime = glfwGetTime() - frameStart;
         frameTime += thisFrameTime;
         if (thisFrameTime > worstFrameTime) {
@@ -311,7 +194,6 @@ int main()
             frame_counter = 0;
             frameTime = 0;
             std::cout << player_pos.x << ","<< player_pos.y << ": (" << player.m_position.x << "," << player.m_position.y <<"," << player.m_position.z <<")\n";
-
         }
         glfwSwapBuffers(window);
         glfwPollEvents();

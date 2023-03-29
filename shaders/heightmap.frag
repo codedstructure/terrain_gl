@@ -5,6 +5,8 @@
 uniform float u_time;
 uniform vec3 u_background;
 uniform sampler2D u_texture;
+uniform float value_a;
+uniform float value_b;
 
 in vec4 groundColour;
 in vec3 groundNormal;
@@ -29,6 +31,8 @@ void main()
 
     float isoline = sin(groundHeight)/2. + 0.5;
     isoline = pow(isoline, 200.);
+
+    isoline = 0;
 
     if (groundHeight > 0) {
         fragColor = texture(u_texture, groundPos.xy / 35.) * 0.5;

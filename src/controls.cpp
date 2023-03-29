@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <unordered_map>
 #include "controls.h"
+#include <iostream>
 
 
 PressedKey::PressedKey(KeyType key) :
@@ -25,6 +26,9 @@ Controls::Controls() :
     k_q(GLFW_KEY_Q),
     k_e(GLFW_KEY_E),
     k_z(GLFW_KEY_Z),
+    k_x(GLFW_KEY_X),
+    k_c(GLFW_KEY_C),
+    k_v(GLFW_KEY_V),
     k_shift(GLFW_KEY_LEFT_SHIFT),
     k_space(GLFW_KEY_SPACE)
 {
@@ -40,6 +44,9 @@ Controls::Controls() :
     register_pk(k_q);
     register_pk(k_e);
     register_pk(k_z);
+    register_pk(k_x);
+    register_pk(k_c);
+    register_pk(k_v);
     register_pk(k_shift);
     register_pk(k_space);
 }
@@ -110,6 +117,22 @@ void Controls::key_callback(int key, int action)
             case GLFW_KEY_0:
             case GLFW_KEY_KP_0:
                 m_thrust = 0;
+                break;
+            case GLFW_KEY_Z:
+                value_a -= 1;
+                std::cout << "value_a: " << value_a << std::endl;
+                break;
+            case GLFW_KEY_X:
+                value_a += 1;
+                std::cout << "value_a: " << value_a << std::endl;
+                break;
+            case GLFW_KEY_C:
+                value_b -= 1;
+                std::cout << "value_b: " << value_b << std::endl;
+                break;
+            case GLFW_KEY_V:
+                value_b += 1;
+                std::cout << "value_b: " << value_b << std::endl;
                 break;
             default:
                 // Do nothing

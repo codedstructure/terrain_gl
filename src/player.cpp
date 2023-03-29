@@ -83,16 +83,16 @@ void Player::update() {
     }
 
     if (controls.k_w.pressed()) {
-        m_position += m_heading * (controls.k_shift.pressed() ? 1.f : 0.1f);
+        m_position += m_heading * (controls.k_shift.pressed() ? controls.value_a : 0.1f);
     }
     if (controls.k_s.pressed()) {
-        m_position -= m_heading * (controls.k_shift.pressed() ? 1.f : 0.1f);
+        m_position -= m_heading * (controls.k_shift.pressed() ? controls.value_a : 0.1f);
     }
     if (controls.k_a.pressed()) {
-        m_position += across * (controls.k_shift.pressed() ? 1.f : 0.1f);
+        m_position += across * (controls.k_shift.pressed() ? controls.value_a : 0.1f);
     }
     if (controls.k_d.pressed()) {
-        m_position -= across * (controls.k_shift.pressed() ? 1.f : 0.1f);
+        m_position -= across * (controls.k_shift.pressed() ? controls.value_a : 0.1f);
     }
     if (controls.k_q.pressed()) {
         m_heading += across * 0.01f;
