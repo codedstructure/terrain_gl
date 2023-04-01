@@ -110,38 +110,46 @@ int Terrain::draw_patch(int grid_x, int grid_y) {
     return layer_idx;
 }
 
-int floor_mult(int x, int mult) {
+int floor_mult(float x, int mult) {
     // round down to multiple of mult
-    return floor(static_cast<float>(x) / mult) * mult;
+    return floor(x / mult) * mult;
 }
 
 unsigned long Terrain::render_terrain_level(glm::vec2 player_pos, glm::vec2 player_dir) {
 
-    auto max_extent = (1 + render_distance) * heightMap.level_factor;
-    auto patch_increment = heightMap.level_factor;
-    auto min_extent = heightMap.level_factor == 1 ? 0 : (1 + render_distance) * (heightMap.level_factor / 2);
+    int max_extent = (1 + render_distance) * heightMap.level_factor;
+    int patch_increment = heightMap.level_factor;
+    int min_extent = (1 + render_distance) * (heightMap.level_factor / 2);
 
     glm::vec2 view_from(player_pos - player_dir);
     glm::vec2 player_loc(view_from.x, view_from.y);
     unsigned long frame_triangles = 0;
 
-    auto min_x = floor_mult(player_pos.x - max_extent, heightMap.level_factor);
-    auto max_x = floor_mult(player_pos.x + max_extent, heightMap.level_factor);
-    auto min_y = floor_mult(player_pos.y - max_extent, heightMap.level_factor);
-    auto max_y = floor_mult(player_pos.y + max_extent, heightMap.level_factor);
+    int min_x = floor_mult(player_pos.x - max_extent, heightMap.level_factor * 2);
+    int max_x = floor_mult(player_pos.x + max_extent, heightMap.level_factor * 2);
+    int min_y = floor_mult(player_pos.y - max_extent, heightMap.level_factor * 2);
+    int max_y = floor_mult(player_pos.y + max_extent, heightMap.level_factor * 2);
 
-    auto stop_min_x = floor_mult(player_pos.x - min_extent, heightMap.level_factor / 2);
-    auto stop_max_x = floor_mult(player_pos.x + min_extent, heightMap.level_factor / 2);
-    auto stop_min_y = floor_mult(player_pos.y - min_extent, heightMap.level_factor / 2);
-    auto stop_max_y = floor_mult(player_pos.y + min_extent, heightMap.level_factor / 2);
+    int stop_min_x = floor_mult(player_pos.x - min_extent, heightMap.level_factor);
+    int stop_max_x = floor_mult(player_pos.x + min_extent, heightMap.level_factor);
+    int stop_min_y = floor_mult(player_pos.y - min_extent, heightMap.level_factor);
+    int stop_max_y = floor_mult(player_pos.y + min_extent, heightMap.level_factor);
 
-    for (int grid_x = min_x; grid_x <= max_x ; grid_x += patch_increment) {
-        for (int grid_y = min_y; grid_y <= max_y ; grid_y += patch_increment) {
+    //std::cout << "level " << level << ", max_extent: " << max_extent << ", px: " << player_pos.x << ", min_x: " << min_x << ", max_x: " << max_x << "\n";
+    //std::cout << "level " << level <<  ", min_extent: " << min_extent << ", px: " << player_pos.x << ", stop_min_x: " << stop_min_x << ", stop_max_x: " << stop_max_x << "\n";
+    //std::cout << "drawing level " << level << "/" << patch_increment << " ";
 
-            if ((grid_x > stop_min_x && grid_x < stop_max_x) &&
-                (grid_y > stop_min_y && grid_y < stop_max_y)) {
+    for (int grid_y = min_y; grid_y <= max_y + patch_increment; grid_y += patch_increment) {
+        for (int grid_x = min_x; grid_x <= max_x + patch_increment; grid_x += patch_increment) {
+            if (heightMap.level_factor > 1 &&
+                ((grid_x >= stop_min_x && grid_x <= stop_max_x) &&
+                 (grid_y >= stop_min_y && grid_y <= stop_max_y))) {
                 continue;
             }
+
+            //if (grid_y == stop_min_y) {
+            //    std::cout << " " << grid_x << " ";
+            //}
 
             glm::vec2 grid_offset{grid_x, grid_y};
             // Draw the grid square if it's vaguely "in front of us" (cos(theta) > X) and within a reasonable
@@ -162,6 +170,7 @@ unsigned long Terrain::render_terrain_level(glm::vec2 player_pos, glm::vec2 play
             }
         }
     }
+    //std::cout << "\n";
     return frame_triangles;
 }
 

@@ -21,7 +21,7 @@ public:
   int size;
   // size of grid in world units
   int grid_scale;
-  uint32_t level_factor;
+  int level_factor;
 private:
   void generatePatch(int x, int y, std::vector<T>& target);
   std::map<std::pair<int, int>, std::vector<T>> patches;
