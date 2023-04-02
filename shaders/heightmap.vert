@@ -42,7 +42,9 @@ void main()
 
     vec3 tpos = vec3(patchpos / u_level_factor, u_layer);
 
-    groundNormal = sobol(tpos, 0.0001) / 2 + sobol(tpos, 0.0005);
+    float normal_offset = 0.001 / u_level_factor;
+
+    groundNormal = sobol(tpos, normal_offset);
 
     float height = texture(u_heightmap, tpos).r;
     if (height < 0) {

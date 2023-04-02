@@ -42,7 +42,7 @@ void main()
         fragColor = vec4(0, 0.1, 0.3, 1.);
     }
     fragColor = mix(
-        vec4((0.2 + diffuse * 0.8) * fragColor.rgb, 1.),
+        vec4((0.3 + diffuse * 0.7) * fragColor.rgb, 1.),
         fogColour,
         fog);
 
