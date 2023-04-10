@@ -3,10 +3,10 @@
 
 # This is intended to work in the following environments:
 #  * MacOS, both Intel & Apple Silicon
-#  * Linux
+#  * Linux (Ubuntu 20.04+)
 # With both JetBrains CLion & command line cmake+make
 
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.16)
 project(terrain_gl)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -29,7 +29,7 @@ add_executable(terrain_gl
 #  sudo apt install libglfw3-dev libglew-dev libglm-dev
 
 # GLEW
-find_package(GLEW 2.2 REQUIRED)
+find_package(GLEW 2.1 REQUIRED)
 target_link_libraries(terrain_gl ${GLEW_LIBRARIES})
 
 # GLM

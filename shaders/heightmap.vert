@@ -2,12 +2,13 @@
 // @codedstructure 2023
 
 #version 330 core
+uniform float u_time;
 uniform mat4 u_mvpMatrix;
 uniform int u_layer;
 uniform sampler2DArray u_heightmap;
 uniform float u_grid_scale;
-uniform float value_a;
-uniform float value_b;
+uniform float u_value_a;
+uniform float u_value_b;
 uniform vec2 u_grid_offset;
 uniform int u_level_factor;
 in vec3 vPos;
@@ -15,6 +16,7 @@ out vec4 groundColour;
 out vec3 groundNormal;
 out vec2 groundPos;
 out float groundHeight;
+out vec3 worldPos;
 
 vec3 sobol(vec3 tpos, float offset)
 {
@@ -47,11 +49,23 @@ void main()
     groundNormal = sobol(tpos, normal_offset);
 
     float height = texture(u_heightmap, tpos).r;
-    if (height < 0) {
-        height = 0;
-        groundNormal = vec3(0, 1, 0);
+    if (height < 1) {
+        // height is max 1, so this results in 0..1
+        float depth = min(4, -height + 1) / 4;
+        depth = smoothstep(0, 1, depth);
+        float waveTime = u_time;
+        vec3 waterNormal1 = sobol(tpos, normal_offset / 4) * 10;
+        float waterValue = sin(world_pos.x / 17 + waveTime * depth) +
+                           cos(world_pos.x / 127 + waveTime / 7)  *
+                           cos(world_pos.y / 137 + waveTime / 19) ;
+        vec3 waterNormal2 = normalize(vec3(waterValue, 1, waterValue));
+        groundNormal = 0.2 * waterNormal1 + 0.4 * waterNormal2;
+        groundNormal = normalize(groundNormal + vec3(0, 1, 0));
+
+        height = max(0, height);
     }
-    gl_Position = u_mvpMatrix * vec4(world_pos.x, height, world_pos.y, 1.);
+    worldPos = vec3(world_pos.x, height, world_pos.y);
+    gl_Position = u_mvpMatrix * vec4(worldPos, 1.);
     groundPos = vPos.xz;
     groundColour = vec4(0.5, 0.3, 0.2, 1.);
     groundHeight = height;

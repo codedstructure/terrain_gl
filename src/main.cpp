@@ -35,8 +35,8 @@ void check_error() {
 
 struct Context
 {
-    int width = 800;
-    int height = 600;
+    int width = 1024;
+    int height = 786;
 
     void setSize(int w, int h) {
         width = w;
@@ -55,7 +55,7 @@ int main()
 
     GLint time_location, mvp_location, heightmap_location,
           layer_location, texture_sampler_location, grid_scale_location,
-          grid_offset_location, background_location,
+          grid_offset_location, background_location, viewpos_location,
           value_a_location, value_b_location, level_factor_location;
 
     glfwSetErrorCallback(error_callback);
@@ -101,8 +101,9 @@ int main()
     texture_sampler_location = program.uniformLocation("u_texture");
     grid_scale_location = program.uniformLocation("u_grid_scale");
     background_location = program.uniformLocation("u_background");
-    value_a_location = program.uniformLocation("value_a");
-    value_b_location = program.uniformLocation("value_b");
+    viewpos_location = program.uniformLocation("u_viewpos");
+    value_a_location = program.uniformLocation("u_value_a");
+    value_b_location = program.uniformLocation("u_value_b");
     program.activate();
 
     Terrain terrain4(3, render_distance, program);
@@ -168,6 +169,7 @@ int main()
         glUniform1i(heightmap_location, HEIGHTMAP_TEX_ID);
         glUniform1i(texture_sampler_location, STONE_TEX_ID);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
+        glUniform3fv(viewpos_location, 1, glm::value_ptr(player.m_position));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
         glUniform1f(grid_scale_location, grid_scale);
         glUniform1f(value_a_location, player.controls.value_a);
