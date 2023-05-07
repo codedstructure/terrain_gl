@@ -28,7 +28,8 @@ static void error_callback(int error, const char *description)
 }
 
 void check_error() {
-    if (int e = glGetError() != 0) {
+    // OpenGL stores error codes in a stack - there could be multiple
+    while (int e = glGetError() != 0) {
         std::cerr << "Error: " << glewGetErrorString(e) << "\n";
     }
 }
@@ -51,12 +52,13 @@ int main()
     static Context ctx;
     const int HEIGHTMAP_TEX_ID = 0;
     const int STONE_TEX_ID = 1;
-    const int render_distance = 2;  // number of patches away to render (0 = only current patch)
+    const int GRASS_TEX_ID = 2;
+    const int render_distance = 3;  // number of patches away to render (0 = only current patch)
 
     GLint time_location, mvp_location, heightmap_location,
-          layer_location, texture_sampler_location, grid_scale_location,
-          grid_offset_location, background_location, viewpos_location,
-          value_a_location, value_b_location, level_factor_location;
+          stone_sampler_location, grass_sampler_location, grid_scale_location,
+          background_location, viewpos_location,
+          value_a_location, value_b_location;
 
     glfwSetErrorCallback(error_callback);
 
@@ -87,7 +89,7 @@ int main()
     glewInit();
     glfwSwapInterval(1);
 
-    glfwSetWindowSizeCallback(
+    glfwSetFramebufferSizeCallback(
             window,
             static_cast<GLFWwindowsizefun>(
                     [](GLFWwindow *window, int new_width, int new_height) {
@@ -98,7 +100,8 @@ int main()
     time_location = program.uniformLocation("u_time");
     mvp_location = program.uniformLocation("u_mvpMatrix");
     heightmap_location = program.uniformLocation("u_heightmap");
-    texture_sampler_location = program.uniformLocation("u_texture");
+    stone_sampler_location = program.uniformLocation("u_stone_tex");
+    grass_sampler_location = program.uniformLocation("u_grass_tex");
     grid_scale_location = program.uniformLocation("u_grid_scale");
     background_location = program.uniformLocation("u_background");
     viewpos_location = program.uniformLocation("u_viewpos");
@@ -106,12 +109,14 @@ int main()
     value_b_location = program.uniformLocation("u_value_b");
     program.activate();
 
+    Terrain terrain5(4, render_distance, program);
     Terrain terrain4(3, render_distance, program);
     Terrain terrain3(2, render_distance, program);
     Terrain terrain2(1, render_distance, program);
     Terrain terrain(0, render_distance, program);
 
     Texture stone(STONE_TEX_ID, "images/stone-texture.jpg");
+    Texture grass(GRASS_TEX_ID, "images/grass-texture.jpg");
 
     glm::vec3 background_colour{0.6, 0.6, 0.6};
 
@@ -159,15 +164,16 @@ int main()
                         0 // -grid_scale / 2.f
                 )
         );
-        if (player.m_position.y < 20 + height) {
-            player.m_position.y = height + 20;
+        if (player.m_position.y < 10 + height) {
+            player.m_position.y = height + 10;
         }
         glm::mat4 mvp = projection * player.getViewMatrix() * model;
 
         // Render the heightmap
 
         glUniform1i(heightmap_location, HEIGHTMAP_TEX_ID);
-        glUniform1i(texture_sampler_location, STONE_TEX_ID);
+        glUniform1i(stone_sampler_location, STONE_TEX_ID);
+        glUniform1i(grass_sampler_location, GRASS_TEX_ID);
         glUniformMatrix4fv(mvp_location, 1, GL_FALSE, glm::value_ptr(mvp));
         glUniform3fv(viewpos_location, 1, glm::value_ptr(player.m_position));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
@@ -180,6 +186,7 @@ int main()
         glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
 
+        frame_triangles += terrain5.render_terrain_level(player_pos, player_dir);
         frame_triangles += terrain4.render_terrain_level(player_pos, player_dir);
         frame_triangles += terrain3.render_terrain_level(player_pos, player_dir);
         frame_triangles += terrain2.render_terrain_level(player_pos, player_dir);

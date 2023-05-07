@@ -12,7 +12,7 @@ Shader::Shader(unsigned int shader_type, const char* filename) :
     basic_ifstream<char> fShaderFile(filename);
     if (!fShaderFile.is_open()) {
         std::cerr << "Cannot open shader " << filename << "\n";
-        //return 0;
+        throw std::runtime_error("Could not load shader");
     } else {
         m_ShaderText = basic_string<char>(
                 std::istreambuf_iterator<char>(fShaderFile),
@@ -34,7 +34,7 @@ Shader::Shader(unsigned int shader_type, const char* filename) :
             std::cerr << "Error compiling " << filename << ": " << infoLog << "\n";
         }
         glDeleteShader(m_Shader);
-        //return 0;
+        throw std::runtime_error("Could not compile shader");
     }
 }
 

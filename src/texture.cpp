@@ -18,7 +18,7 @@ Texture::Texture(const int tex_id, const char* filename) :
     m_data = stbi_load(filename, &m_width, &m_height, &m_channels, 0); //// STBI_rgb_alpha);
     if (m_data == nullptr) {
         std::cerr << "Could not load texture from " << filename << "\n";
-        return;
+        throw std::runtime_error("Failed to load texture");
     }
     std::cout << "Loaded texture from " << filename << " " << m_width << "x" << m_height << "," << m_channels << "\n";
     glActiveTexture(GL_TEXTURE0 + tex_id);
