@@ -63,23 +63,23 @@ void Player::update() {
     //std::cout << "FORCE: " << force.x << " " << force.y << " " << force.z << "\n";
 
     // Stability is good...
-    m_roll *= 0.99;
+    //m_roll *= 0.99;
     m_pitch *= 0.9;
 
     m_velocity += force / mass / 1000.0f;
     m_position += m_velocity;
 
     if (controls.k_up.pressed() && m_pitch < 0.9) {
-        m_pitch += 0.01;
+        m_pitch += 0.05;
     }
     if (controls.k_down.pressed() && m_pitch > -0.9) {
-        m_pitch -= 0.01;
+        m_pitch -= 0.05;
     }
-    if (controls.k_left.pressed() && m_roll < M_PI_2f) {
-        m_roll += 0.01;
+    if (controls.k_left.pressed() /*&& m_roll < M_PI_2f*/) {
+        m_roll += 0.05;
     }
-    if (controls.k_right.pressed() && m_roll > -M_PI_2f) {
-        m_roll -= 0.01;
+    if (controls.k_right.pressed() /*&& m_roll > -M_PI_2f*/) {
+        m_roll -= 0.05;
     }
 
     if (controls.k_w.pressed()) {

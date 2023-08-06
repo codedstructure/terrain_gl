@@ -109,12 +109,6 @@ int main()
     value_b_location = program.uniformLocation("u_value_b");
     program.activate();
 
-    Terrain terrain5(4, render_distance, program);
-    Terrain terrain4(3, render_distance, program);
-    Terrain terrain3(2, render_distance, program);
-    Terrain terrain2(1, render_distance, program);
-    Terrain terrain(0, render_distance, program);
-
     Texture stone(STONE_TEX_ID, "images/stone-texture.jpg");
     Texture grass(GRASS_TEX_ID, "images/grass-texture.jpg");
 
@@ -127,6 +121,11 @@ int main()
             background_colour.g,
             background_colour.b,
             1.0);
+
+    std::vector<Terrain*> terrain_set;
+    for (int level=0; level<6; level++) {
+        terrain_set.emplace_back(new Terrain(level, render_distance, program));
+    }
 
     long frame_counter = 0;
     double worstFrameTime = 0;
@@ -150,7 +149,7 @@ int main()
         player_pos /= grid_scale;
         glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
 
-        auto height = terrain.heightMap.heightAt(player_pos.x, player_pos.y);
+        auto height = terrain_set[0]->heightMap.heightAt(player_pos.x, player_pos.y);
 
         glm::mat4 projection = glm::perspective(
                 glm::radians(75.0f),  // field of view
@@ -186,11 +185,9 @@ int main()
         glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
 
-        frame_triangles += terrain5.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain4.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain3.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain2.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain.render_terrain_level(player_pos, player_dir);
+        for (auto terrain: terrain_set) {
+            frame_triangles += terrain->render_terrain_level(player_pos, player_dir);
+        }
 
         auto thisFrameTime = glfwGetTime() - frameStart;
         frameTime += thisFrameTime;
@@ -209,6 +206,14 @@ int main()
 
         // Get some indication if things aren't going as they should
         check_error();
+
+
+       // std::cout << "Frame\n";
+       // if (frame_counter > 5) { break; }
+    }
+
+    for (auto terrain: terrain_set) {
+        terrain->stop();
     }
 
     glfwDestroyWindow(window);

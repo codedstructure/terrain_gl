@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <GL/glew.h>
+#include <thread>
 
 #include "terrain.h"
 
@@ -46,6 +47,8 @@ Terrain::Terrain(int level, int render_distance, ShaderProgram& program) :
             nullptr
     );
 
+    patch_thread = std::thread([&]{patch_maker();});
+
     // Index buffer for base grid
     glGenBuffers(1, &indicesIBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
@@ -66,6 +69,33 @@ Terrain::Terrain(int level, int render_distance, ShaderProgram& program) :
     glBindVertexArray(VAOId);
 }
 
+void Terrain::patch_maker() {
+    while (running) {
+        std::unique_lock<std::mutex> mlock(mutex_);
+        cond_.wait(mlock, [&]{return !patch_queue.empty();});
+
+        auto [grid_x, grid_y] = patch_queue.front();
+        if (grid_x == -1 && grid_y == -1) {
+            break;
+        }
+        patch_queue.pop();
+        mlock.unlock();
+        cond_.notify_one();
+
+        build_patch(grid_x, grid_y);
+    }
+}
+
+void Terrain::stop() {
+    running = false;
+    {
+        std::scoped_lock<std::mutex> mlock(mutex_);
+        patch_queue.emplace(-1, -1);
+        cond_.notify_one();
+    }
+    patch_thread.join();
+}
+
 void Terrain::start_drawing() const {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D_ARRAY, texId);
@@ -75,23 +105,43 @@ void Terrain::start_drawing() const {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesIBO);
 }
 
-int Terrain::draw_patch(int grid_x, int grid_y) {
-    auto layer_idx = 0;
-    auto layer = grid_layer_map.find({grid_x, grid_y});
-    if (layer != grid_layer_map.end()) {
-        layer_idx = layer->second;
-    } else {
-        // 1. find patch to replace
-        // yup, this seems awful, but it does the job reasonably well.
-        // (minor concession: ignore the least-random low-order bits)
-        auto replace_layer = (rand() >> 8) % layer_count;
+int Terrain::build_patch(int grid_x, int grid_y) {
+    // 1. find patch to replace
+    // yup, this seems awful, but it does the job reasonably well.
+    // (minor concession: ignore the least-random low-order bits)
+    auto replace_layer = (rand() >> 8) % layer_count;
 
-        // 2. create new patch for grid_x, grid_y and update texture array
+    // 2. create new patch for grid_x, grid_y and update texture array
+    heightMap.getPatchFor(grid_x, grid_y);
+
+    // 3. update the heightmap index arrays
+    auto grid = layer_grid_map[replace_layer];
+    {
+        std::scoped_lock<std::mutex> mlock(mutex_);
+        grid_layer_map.erase(grid);
+        grid_layer_map[{grid_x, grid_y}] = replace_layer;
+    }
+    layer_grid_map[replace_layer] = {grid_x, grid_y};
+    return replace_layer;
+}
+
+int Terrain::draw_patch(int grid_x, int grid_y, bool force) {
+    auto layer_idx = 0;
+    decltype(grid_layer_map.end()) layer;
+    bool present;
+    {
+        std::scoped_lock<std::mutex> mlock(mutex_);
+        layer = grid_layer_map.find({grid_x, grid_y});
+        present = (layer != grid_layer_map.end());
+    }
+    if (present) {
+        layer_idx = layer->second;
+
         glTexSubImage3D(
                 GL_TEXTURE_2D_ARRAY, // target
                 0, // mipmap level
                 0, 0, // top-left coord
-                replace_layer, // start layer
+                layer_idx, // start layer
                 adapted, // width
                 adapted, // height
                 1, // layer count (number of layers)
@@ -99,13 +149,21 @@ int Terrain::draw_patch(int grid_x, int grid_y) {
                 GL_FLOAT,
                 &heightMap.getPatchFor(grid_x, grid_y)[0]
         );
+    } else {
+        /*
+        if (!force) {
+            // Doesn't exist and not forced; return blank.
+            return -1;
+        }
+         */
 
-        // 3. update the heightmap index arrays
-        auto grid = layer_grid_map[replace_layer];
-        grid_layer_map.erase(grid);
-        grid_layer_map[{grid_x, grid_y}] = replace_layer;
-        layer_grid_map[replace_layer] = {grid_x, grid_y};
-        layer_idx = replace_layer;
+        {
+            std::scoped_lock<std::mutex> mlock(mutex_);
+            patch_queue.emplace(grid_x, grid_y);
+        }
+        cond_.notify_one();
+
+        layer_idx = -2; // replace_layer;
     }
     return layer_idx;
 }
@@ -139,6 +197,7 @@ unsigned long Terrain::render_terrain_level(glm::vec2 player_pos, glm::vec2 play
     //std::cout << "level " << level <<  ", min_extent: " << min_extent << ", px: " << player_pos.x << ", stop_min_x: " << stop_min_x << ", stop_max_x: " << stop_max_x << "\n";
     //std::cout << "drawing level " << level << "/" << patch_increment << " ";
 
+    bool started = false;
     for (int grid_y = min_y; grid_y <= max_y + patch_increment; grid_y += patch_increment) {
         for (int grid_x = min_x; grid_x <= max_x + patch_increment; grid_x += patch_increment) {
             if (heightMap.level_factor > 1 &&
@@ -157,9 +216,14 @@ unsigned long Terrain::render_terrain_level(glm::vec2 player_pos, glm::vec2 play
             if (glm::dot(player_dir, glm::normalize(glm::vec2(grid_offset - (player_loc - player_dir)))) >
                 0.5) {
 
-                start_drawing();
+                if (!started) {
+                    start_drawing();
+                }
                 auto [g_x, g_y] = heightMap.getPatchCoords(grid_x, grid_y);
-                auto layer_idx = draw_patch(g_x, g_y);
+                auto layer_idx = draw_patch(g_x, g_y, !started);
+                if (layer_idx == -2) {
+                    started = true;
+                }
                 grid_offset = {g_x, g_y};
                 glUniform1i(layer_location, layer_idx);
                 glUniform1i(level_factor_location, static_cast<GLint>(heightMap.level_factor));
