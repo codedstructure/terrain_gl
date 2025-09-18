@@ -56,7 +56,7 @@ int main()
     const int render_distance = 3;  // number of patches away to render (0 = only current patch)
 
     GLint time_location, mvp_location, heightmap_location,
-          stone_sampler_location, grass_sampler_location, grid_scale_location,
+          stone_sampler_location, grass_sampler_location, grid_scale_location, grid_size_location,
           background_location, viewpos_location,
           value_a_location, value_b_location;
 
@@ -103,6 +103,7 @@ int main()
     stone_sampler_location = program.uniformLocation("u_stone_tex");
     grass_sampler_location = program.uniformLocation("u_grass_tex");
     grid_scale_location = program.uniformLocation("u_grid_scale");
+    grid_size_location = program.uniformLocation("u_grid_size");
     background_location = program.uniformLocation("u_background");
     viewpos_location = program.uniformLocation("u_viewpos");
     value_a_location = program.uniformLocation("u_value_a");
@@ -178,6 +179,7 @@ int main()
         glUniform3fv(viewpos_location, 1, glm::value_ptr(player.m_position));
         glUniform1f(time_location, static_cast<GLfloat>(glfwGetTime()));
         glUniform1f(grid_scale_location, grid_scale);
+        glUniform1f(grid_size_location, grid_size);
         glUniform1f(value_a_location, player.controls.value_a);
         glUniform1f(value_b_location, player.controls.value_b);
         glUniform3fv(background_location, 1, glm::value_ptr(background_colour));

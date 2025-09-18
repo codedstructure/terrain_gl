@@ -26,13 +26,14 @@ Terrain::Terrain(int level, int render_distance, ShaderProgram& program) :
     glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     // Constant border to exacerbate edge effects - we want to deal with them internally and
     // never hit the edge here.
+    // TODO: consider REPEAT vs CONSTANT_BORDER
     glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CONSTANT_BORDER );
     glTexParameteri ( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CONSTANT_BORDER );
     // The texture is calculated at a larger size than the rendered patch,
-    // so the texture coordinate can be shifted towards the centre of the
-    // texture and thus avoid edge-effects. Needs to tie up with heightmap
+    // and the texture coordinates are shifted towards the centre of the
+    // texture and reduce edge-effects. Needs to tie up with heightmap
     // generation and the vertex shader...
-    adapted = grid_size * 1.25;
+    adapted = grid_size * 1.25 + 1;
     glTexImage3D(
             GL_TEXTURE_2D_ARRAY, // target
             0, // mipmap level
@@ -56,7 +57,7 @@ Terrain::Terrain(int level, int render_distance, ShaderProgram& program) :
     // Position VBO for base grid
     glGenBuffers(1, &positionVBO);
     glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-    glBufferData(GL_ARRAY_BUFFER, grid_size * grid_size * sizeof(GLfloat) * 3,
+    glBufferData(GL_ARRAY_BUFFER, numVertices * sizeof(GLfloat) * 3,
                  &heightMap.grid[0], GL_STATIC_DRAW);
 
     // We need a vertex array generated for the attrib array later on,
@@ -173,4 +174,3 @@ unsigned long Terrain::render_terrain_level(glm::vec2 player_pos, glm::vec2 play
     //std::cout << "\n";
     return frame_triangles;
 }
-

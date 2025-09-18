@@ -14,9 +14,12 @@
 #include "heightmap.h"
 #include "shader.h"
 
-const int grid_size = 64;    // edge length of each patch - must be multiple of 4, so 1.25 * grid_size is an int
-const int grid_scale = 256;  // patch size in world units
-const int numIndices = (grid_size - 1) * (grid_size - 1) * 2 * 3;
+const int grid_size = 64;    // edge length of each patch - must be multiple of 8, so 0.125 * grid_size is an int
+const int grid_scale = 64;  // patch size in world units
+const int skirtQuads = 4 * grid_size; // extra vertices for the skirts
+const int skirtVertices = 4 * (grid_size + 1);
+const int numIndices = (grid_size * grid_size + skirtQuads) * 2 * 3;
+const int numVertices = (grid_size+1) * (grid_size+1) + skirtVertices;
 
 class Terrain {
 public:
