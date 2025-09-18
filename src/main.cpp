@@ -110,11 +110,13 @@ int main()
     value_b_location = program.uniformLocation("u_value_b");
     program.activate();
 
-    Terrain terrain5(4, render_distance, program);
-    Terrain terrain4(3, render_distance, program);
-    Terrain terrain3(2, render_distance, program);
-    Terrain terrain2(1, render_distance, program);
-    Terrain terrain(0, render_distance, program);
+    Terrain terrain(0, render_distance, program, nullptr);
+    Terrain terrain2(1, render_distance, program, &terrain);
+    Terrain terrain3(2, render_distance, program, &terrain2);
+    Terrain terrain4(3, render_distance, program, &terrain3);
+    Terrain terrain5(4, render_distance, program, &terrain4);
+    // The top level terrain - start rendering from here
+    auto topTerrain = terrain5;
 
     Texture stone(STONE_TEX_ID, "images/stone-texture.jpg");
     Texture grass(GRASS_TEX_ID, "images/grass-texture.jpg");
@@ -147,11 +149,11 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDepthFunc( GL_LEQUAL);
 
-        glm::vec2 player_pos(player.m_position.x, player.m_position.z);
+        glm::vec3 player_pos(player.m_position);
         player_pos /= grid_scale;
-        glm::vec2 player_dir = glm::normalize(glm::vec2(player.m_heading.x, player.m_heading.z));
+        glm::vec3 player_dir = glm::normalize(player.m_heading);
 
-        auto height = terrain.heightMap.heightAt(player_pos.x, player_pos.y);
+        auto height = terrain.heightMap.heightAt(player_pos.x, player_pos.z);
 
         glm::mat4 projection = glm::perspective(
                 glm::radians(75.0f),  // field of view
@@ -184,15 +186,9 @@ int main()
         glUniform1f(value_b_location, player.controls.value_b);
         glUniform3fv(background_location, 1, glm::value_ptr(background_colour));
 
-        glm::vec2 view_from(player_pos - player_dir);
-        glm::vec2 player_loc(view_from.x, view_from.y);
         auto frame_triangles = 0;
 
-        frame_triangles += terrain5.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain4.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain3.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain2.render_terrain_level(player_pos, player_dir);
-        frame_triangles += terrain.render_terrain_level(player_pos, player_dir);
+        frame_triangles += topTerrain.render_terrain_top_level(player_pos, player_dir);
 
         auto thisFrameTime = glfwGetTime() - frameStart;
         frameTime += thisFrameTime;
